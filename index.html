@@ -3,46 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Farm Attendance & Pay</title>
+    <title>Farm Pro Manager</title>
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f0f2f0; color: #333; margin: 0; }
+        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f0f2f0; color: #333; margin: 0; padding-bottom: 50px; }
         .header { background: #1b5e20; color: white; padding: 25px 20px; border-radius: 0 0 25px 25px; text-align: center; margin: -15px -15px 20px -15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h3 { margin-top: 0; color: #1b5e20; border-bottom: 2px solid #e8f5e9; padding-bottom: 5px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        button { background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-checkin { background: #43a047; margin-top: 5px; }
+        h3 { margin-top: 0; color: #1b5e20; border-bottom: 2px solid #e8f5e9; padding-bottom: 5px; display: flex; justify-content: space-between; }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        button { background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .btn-checkin { background: #43a047; margin-bottom: 5px; }
+        .btn-all { background: #fb8c00; margin-bottom: 15px; }
+        .btn-misc { background: #546e7a; }
         .entry { background: white; padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #2e7d32; }
-        .delete-btn { background: #c62828; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 5px; }
-        .reg-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .delete-btn { background: #c62828; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 5px; color:white; }
+        .history-bar { background: #e8f5e9; height: 20px; border-radius: 10px; margin-top: 5px; overflow: hidden; }
+        .bar-fill { background: #2e7d32; height: 100%; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <small>Total Outstanding Balance</small>
+        <small>Current Outstanding Dues</small>
         <h1 style="margin:0">₹<span id="grandTotal">0</span></h1>
     </div>
 
     <div class="card">
-        <h3>1. Register New Worker</h3>
-        <input type="text" id="regName" placeholder="Worker Name">
-        <input type="number" id="regWage" placeholder="Daily Wage (₹)">
-        <button onclick="registerWorker()">Save to Registry</button>
-        
-        <div id="registryList" style="margin-top:15px; font-size: 14px;"></div>
+        <h3>Change Working Date</h3>
+        <input type="date" id="globalDate">
     </div>
 
     <div class="card">
-        <h3>2. Daily Attendance</h3>
-        <p style="font-size: 12px; color: #666;">Click "Check-in" to add today's pay to their balance.</p>
+        <h3>Daily Attendance</h3>
+        <button class="btn-all" onclick="checkInAll()">✓ Check-in All Workers</button>
         <div id="attendanceList"></div>
     </div>
 
-    <h3>3. Current Dues</h3>
+    <div class="card">
+        <h3>Miscellaneous Expenses</h3>
+        <input type="number" id="miscAmount" placeholder="Amount (₹)">
+        <textarea id="miscNote" placeholder="Note (e.g. Fertilizer, Seeds, Repair...)" rows="3"></textarea>
+        <button class="btn-misc" onclick="addMisc()">Add Expense</button>
+    </div>
+
+    <div class="card">
+        <h3>Monthly Expenditure</h3>
+        <div id="monthlyGraph"></div>
+    </div>
+
+    <div class="card">
+        <h3>Worker Registry</h3>
+        <input type="text" id="regName" placeholder="Worker Name">
+        <input type="number" id="regWage" placeholder="Daily Wage (₹)">
+        <button onclick="registerWorker()">Register Worker</button>
+        <div id="registryList" style="margin-top:10px;"></div>
+    </div>
+
+    <h3>Dues / Records</h3>
     <div id="logList"></div>
 
     <script>
+        document.getElementById('globalDate').valueAsDate = new Date();
         let workers = JSON.parse(localStorage.getItem('farmWorkers')) || [];
         let records = JSON.parse(localStorage.getItem('farmRecords')) || [];
 
@@ -50,17 +70,37 @@
             const name = document.getElementById('regName').value;
             const wage = document.getElementById('regWage').value;
             if(name && wage) {
-                workers.push({ name, wage });
+                workers.push({ name, wage: parseFloat(wage) });
                 document.getElementById('regName').value = '';
                 document.getElementById('regWage').value = '';
                 renderAll();
             }
         }
 
-        function markPresent(name, wage) {
-            const date = new Date().toLocaleDateString();
-            records.push({ name, pay: wage, date });
+        function checkInAll() {
+            const date = document.getElementById('globalDate').value;
+            workers.forEach(w => {
+                records.push({ name: w.name, pay: w.wage, date, type: 'wage' });
+            });
             renderAll();
+        }
+
+        function markPresent(name, wage) {
+            const date = document.getElementById('globalDate').value;
+            records.push({ name, pay: wage, date, type: 'wage' });
+            renderAll();
+        }
+
+        function addMisc() {
+            const amt = document.getElementById('miscAmount').value;
+            const note = document.getElementById('miscNote').value;
+            const date = document.getElementById('globalDate').value;
+            if(amt && note) {
+                records.push({ name: "MISC: " + note.substring(0, 20), pay: parseFloat(amt), date, type: 'misc', fullNote: note });
+                document.getElementById('miscAmount').value = '';
+                document.getElementById('miscNote').value = '';
+                renderAll();
+            }
         }
 
         function removeRecord(index) {
@@ -69,51 +109,67 @@
         }
 
         function deleteWorker(index) {
-            if(confirm("Delete this worker from registry?")) {
-                workers.splice(index, 1);
-                renderAll();
-            }
+            if(confirm("Delete worker?")) { workers.splice(index, 1); renderAll(); }
         }
 
         function renderAll() {
-            // Render Registry
+            // Registry
             const regList = document.getElementById('registryList');
-            regList.innerHTML = '<b>Regulars:</b>';
+            regList.innerHTML = '';
             workers.forEach((w, i) => {
-                regList.innerHTML += `
-                    <div class="reg-item">
-                        ${w.name} (₹${w.wage})
-                        <button class="delete-btn" onclick="deleteWorker(${i})">X</button>
-                    </div>`;
+                regList.innerHTML += `<div style="display:flex; justify:space-between; margin-bottom:5px;">
+                    ${w.name} (₹${w.wage}) <button class="delete-btn" style="margin-left:auto" onclick="deleteWorker(${i})">X</button>
+                </div>`;
             });
 
-            // Render Attendance Buttons
+            // Attendance
             const attList = document.getElementById('attendanceList');
             attList.innerHTML = '';
             workers.forEach(w => {
-                attList.innerHTML += `<button class="btn-checkin" onclick="markPresent('${w.name}', ${w.wage})">Check-in: ${w.name}</button>`;
+                attList.innerHTML += `<button class="btn-checkin" onclick="markPresent('${w.name}', ${w.wage})">Check-in ${w.name}</button>`;
             });
 
-            // Render Dues
+            // Records & Total
             const list = document.getElementById('logList');
             const totalDisplay = document.getElementById('grandTotal');
             list.innerHTML = '';
-            let total = 0;
+            let totalDues = 0;
+            let monthlyTotals = {};
+
             records.sort((a, b) => new Date(b.date) - new Date(a.date));
             records.forEach((item, index) => {
-                total += parseFloat(item.pay);
-                list.innerHTML += `<div class="entry">
+                totalDues += item.pay;
+                
+                // Track Monthly Expenditure
+                let monthKey = item.date.substring(0, 7); // YYYY-MM
+                monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + item.pay;
+
+                list.innerHTML += `<div class="entry" style="border-left-color: ${item.type==='misc'?'#546e7a':'#2e7d32'}">
                     <div><b>${item.name}</b><br><small>${item.date}</small></div>
                     <div style="text-align:right"><b>₹${item.pay}</b><br>
-                    <button class="delete-btn" onclick="removeRecord(${index})">Paid</button></div>
+                    <button class="delete-btn" onclick="removeRecord(${index})">Paid/Delete</button></div>
                 </div>`;
             });
-            totalDisplay.innerText = total.toLocaleString('en-IN');
+            totalDisplay.innerText = totalDues.toLocaleString('en-IN');
+
+            // Graph Logic
+            const graph = document.getElementById('monthlyGraph');
+            graph.innerHTML = '';
+            const sortedMonths = Object.keys(monthlyTotals).sort().reverse();
+            const maxVal = Math.max(...Object.values(monthlyTotals), 1);
             
+            sortedMonths.slice(0, 12).forEach(m => {
+                let val = monthlyTotals[m];
+                let pct = (val / maxVal) * 100;
+                graph.innerHTML += `<div style="margin-bottom:10px; font-size:12px;">
+                    ${m}: ₹${val.toLocaleString('en-IN')}
+                    <div class="history-bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+                </div>`;
+            });
+
             localStorage.setItem('farmWorkers', JSON.stringify(workers));
             localStorage.setItem('farmRecords', JSON.stringify(records));
         }
-
         renderAll();
     </script>
 </body>
