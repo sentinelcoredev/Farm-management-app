@@ -1,2 +1,76 @@
 # Farm-management-app
 Manage all employees and their payments 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Farm Management</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f4f7f4; color: #333; margin: 0; }
+        .header { background: #2e7d32; color: white; padding: 20px; border-radius: 0 0 20px 20px; text-align: center; margin: -15px -15px 20px -15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        button { background: #2e7d32; color: white; border: none; padding: 15px; border-radius: 10px; width: 100%; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        .entry { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #2e7d32; }
+        .delete-btn { background: #e53935; width: auto; padding: 8px 12px; font-size: 13px; margin-left: 10px; border-radius: 5px; color: white; border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <small>Total Due to Employees</small>
+        <h1 style="margin:0">$<span id="grandTotal">0</span></h1>
+    </div>
+
+    <div class="card">
+        <input type="text" id="empName" placeholder="Employee Name">
+        <input type="number" id="empPay" placeholder="Daily Wage">
+        <input type="date" id="workDate">
+        <button onclick="addEntry()">Add Record</button>
+    </div>
+
+    <div id="logList"></div>
+
+    <script>
+        document.getElementById('workDate').valueAsDate = new Date();
+        let records = JSON.parse(localStorage.getItem('farmRecords')) || [];
+
+        function render() {
+            const list = document.getElementById('logList');
+            const totalDisplay = document.getElementById('grandTotal');
+            list.innerHTML = '';
+            let total = 0;
+            records.sort((a, b) => new Date(b.date) - new Date(a.date));
+            records.forEach((item, index) => {
+                total += parseFloat(item.pay);
+                list.innerHTML += `<div class="entry">
+                    <div><b>${item.name}</b><br><small>${item.date}</small></div>
+                    <div style="text-align:right"><b>$${item.pay}</b><br>
+                    <button class="delete-btn" onclick="removeEntry(${index})">Paid</button></div>
+                </div>`;
+            });
+            totalDisplay.innerText = total.toFixed(2);
+            localStorage.setItem('farmRecords', JSON.stringify(records));
+        }
+
+        function addEntry() {
+            const name = document.getElementById('empName').value;
+            const pay = document.getElementById('empPay').value;
+            const date = document.getElementById('workDate').value;
+            if(name && pay && date) {
+                records.push({ name, pay, date });
+                document.getElementById('empName').value = '';
+                document.getElementById('empPay').value = '';
+                render();
+            }
+        }
+
+        function removeEntry(index) {
+            records.splice(index, 1);
+            render();
+        }
+        render();
+    </script>
+</body>
+</html>
